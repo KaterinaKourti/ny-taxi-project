@@ -1,4 +1,5 @@
 import argparse
+import haversine as hs
 import io
 from json import loads,dumps
 from minio import Minio
@@ -7,7 +8,7 @@ from utils.data_constants import *
 from utils.minio_utils import create_bucket
  
 parser = argparse.ArgumentParser()
-parser.add_argument("-query", default = 1, type = int)
+parser.add_argument("-query", default = 2, type = int)
 args = parser.parse_args()
 
 
@@ -22,19 +23,11 @@ def get_batches(client,bucket_name):
         response.release_conn()
     return batches
 
-    
-# def get_pickup_coordinates(row):
-#     lat = row['pickup_latitude']
-#     long = row['pickup_latitude']
-#     return lat, long
-
-    # ['NW',1]
-    # ['NW',[1,1,1,1,1]]
 
 def find_quarter(row):
 
     lat = float(row['pickup_latitude'])
-    long = float(row['pickup_latitude'])
+    long = float(row['pickup_longitude'])
 
     if lat > NY_BASE_LAT and long > NY_BASE_LONG:
         return ['NE',1]
@@ -63,7 +56,46 @@ def shuffle_quarters(batch):
             SW['SW'].append(1)
 
     return [NE,NW,SE,SW]
+
+
+def calculate_distance(row):
+    # Get Pickup (lat,long) coordinates from each row of the batch and turn them into point -> (lat,long) tuple
+    source_lat = float(row['pickup_latitude'])
+    source_long = float(row['pickup_longitude'])
+    source_point = (source_lat,source_long)
+
+    # Get Dropoff (lat,long) coordinates from each row of the batch and turn them into point -> (lat,long) tuple
+    dest_lat = float(row['dropoff_latitude'])
+    dest_long = float(row['dropoff_longitude'])
+    dest_point = (dest_lat,dest_long)
+
+    distance_in_km = hs.haversine(source_point,dest_point)
+
+    return distance_in_km
+
+def trip_stats(row):
+    trip_distance = round(calculate_distance(row),1)
+    trip_duration = int(row['trip_duration']) # in secs
+    passenger_count = int(row['passenger_count'])
+    trip_id = row['id']
+
+    if trip_distance > 1.0 and trip_duration > 600 and passenger_count > 2:
+        return ['effective',trip_id]
+    else:
+        return ['ineffective',trip_id]
+
+
+def shuffle_trip_stats(batch):
+    effective_trips = {"effective":[]}
+    ineffective_trips = {"ineffective":[]}
+
+    for trip in batch:
+        if trip[0] == 'effective':
+            effective_trips['effective'].append(trip[1])
+        elif trip[0] == 'ineffective':
+            ineffective_trips['ineffective'].append(trip[1])
     
+    return [effective_trips, ineffective_trips]
 
 
 def mapper(client,bucket,index,batch,query):
@@ -76,7 +108,10 @@ def mapper(client,bucket,index,batch,query):
         
     elif query == 2:
         # Query 2 Logic
-        pass
+        mapped_data = shuffle_trip_stats(list(map(lambda row: trip_stats(row), batch)))
+        data = dumps(mapped_data)
+        response = client.put_object(bucket, f"Q2_mapper_results_batch_{index}", io.BytesIO(bytes(data,'ascii')), len(bytes(data,'ascii')), content_type="application/json")
+        
     
     else:
         pass
