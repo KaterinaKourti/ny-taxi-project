@@ -4,5 +4,5 @@ BUCKET_NAMES = {
     'reducer': 'reducer-data'
 }
 
-NY_BASE_LAT = 40.7128
-NY_BASE_LONG = 74.0060
+NY_BASE_LAT = 40.730610
+NY_BASE_LONG = -73.935242
