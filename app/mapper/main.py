@@ -3,8 +3,6 @@ import datetime
 import haversine as hs
 import io
 from json import loads,dumps
-from minio import Minio
-import pandas as pd
 from termcolor import colored
 
 from utils.data_constants import *
@@ -43,22 +41,24 @@ def find_quarter(row):
     
 def shuffle_quarters(batch):
 
-    NE = {"NE":[]}
-    NW = {"NW":[]}
-    SE = {"SE":[]}
-    SW  = {"SW":[]}
+    quarters = {
+        'NE': [],
+        'NW': [],
+        'SE': [],
+        'SW': []
+    }
 
-    for datum in batch:
-        if datum[0] == "NE":
-            NE['NE'].append(1)
-        elif datum[0] == "NW":
-            NW['NW'].append(1)
-        elif datum[0] == "SE":
-            SE['SE'].append(1)
-        elif datum[0] == "SW":
-            SW['SW'].append(1)
+    for row in batch:
+        if row[0] == "NE":
+            quarters['NE'].append(1)
+        elif row[0] == "NW":
+            quarters['NW'].append(1)
+        elif row[0] == "SE":
+            quarters['SE'].append(1)
+        elif row[0] == "SW":
+            quarters['SW'].append(1)
 
-    return [NE,NW,SE,SW]
+    return quarters
 
 
 def calculate_distance(row):
@@ -89,16 +89,18 @@ def trip_stats(row):
 
 
 def shuffle_trip_stats(batch):
-    effective_trips = {"effective":[]}
-    ineffective_trips = {"ineffective":[]}
+    trips = {
+        "effective":[],
+        "ineffective":[]
+    }
 
     for trip in batch:
         if trip[0] == 'effective':
-            effective_trips['effective'].append(trip[1])
+            trips['effective'].append(trip[1])
         elif trip[0] == 'ineffective':
-            ineffective_trips['ineffective'].append(trip[1])
+            trips['ineffective'].append(trip[1])
     
-    return [effective_trips, ineffective_trips]
+    return trips
 
 
 def optimal_trips(row):
@@ -158,7 +160,8 @@ def mapper(client,bucket,index,batch,query):
 
 def main(args):
     query = args.query
-    mapper_bucket = BUCKET_NAMES['mapper']
+    mapper_bucket = BUCKET_NAMES['mapper'].format(f'q{query}')
+    print(mapper_bucket)
     client = create_bucket(mapper_bucket)
     # batches = get_batches(client,BUCKET_NAMES['preprocess'])
     batches = get_batches(client,'testbucket') # test 
