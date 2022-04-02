@@ -1,0 +1,6 @@
+minio
+pandas
+datetime
+haversine
+termcolor
+requests
