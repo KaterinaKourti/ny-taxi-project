@@ -4,7 +4,7 @@ BUCKET_NAMES = {
     'reducer': 'reducer-data-{}'
 }
 
-DATASET_FILEPATH = 'data/fares.csv'
+DATASET_FILEPATH = 'data/test.csv'
 
 NY_BASE_LAT = 40.730610
 NY_BASE_LONG = -73.935242

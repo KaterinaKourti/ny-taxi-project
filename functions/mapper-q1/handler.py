@@ -1,18 +1,12 @@
 import datetime
 import io
 from json import loads,dumps
-from termcolor import colored
 from minio import Minio
+from os import environ
 
-def create_bucket(bucket,verbose=False):
-    client = Minio('192.168.68.108:9000',access_key = 'minioadmin', secret_key = 'minioadmin',secure=False)
-    if not client.bucket_exists(bucket):
-        client.make_bucket(bucket)
-    if verbose:
-        buckets = client.list_buckets()
-        for b in buckets:
-            print(b.name, b.creation_date)
 
+def connect_to_minio():
+    client = Minio(environ.get("MINIO_HOSTNAME"),access_key = environ.get("MINIO_ACCESS_KEY"), secret_key = environ.get("MINIO_SECRET_KEY"),secure=False)
     return client
 
 
@@ -20,28 +14,9 @@ NY_BASE_LAT = 40.730610
 NY_BASE_LONG = -73.935242
 
 BUCKET_NAMES = {
-    'data-entry': 'data-entry',
-    'preprocess': 'batches',
     'mapper-q1': 'mapper-data-q1',
-    'mapper-q2': 'mapper-data-q2',
-    'mapper-q3': 'mapper-data-q3',
-    'reducer-q1': 'reducer-data-q1',
-    'reducer-q2': 'reducer-data-q2',
-    'reducer-q3': 'reducer-data-q3'
+    'reducer-q1': 'reducer-data-q1'
 }
-
-
-
-def get_batches(client,bucket_name):
-    objects = client.list_objects(bucket_name)
-    batches = []
-    for obj in objects:
-        response = client.get_object(bucket_name,obj.object_name)
-        batches.append(response.read())
-        response.close()
-        response.release_conn()
-    return batches
-
 
 def find_quarter(row):
 
@@ -91,20 +66,26 @@ def mapper(client,bucket,index,batch):
 def handle(req):
     error = ''
     try:
+        body = loads(req)
+        # preprocess_url = 'http://127.0.0.1:8080/function/preprocess'
+        batch_name = body['Key'].split('/')[1]
+        index = batch_name.split('_')[-1]
         mapper_bucket = BUCKET_NAMES['mapper-q1']
-        client = create_bucket(mapper_bucket)
-        # batches = get_batches(client,BUCKET_NAMES['preprocess'])
-        batches = get_batches(client,'testbucket') # test 
+        reducer_bucket = BUCKET_NAMES['reducer-q1']
+        client = connect_to_minio()
+        print('Batch Name: ',batch_name)
+        batch = client.get_object(mapper_bucket,batch_name).read().decode('utf-8')
         # we must decode the byte array into str and then load it as json
-        json_batches = [loads(batch.decode('utf-8')) for batch in batches]
+        json_batch = loads(batch)
         # print(batches)
-        [mapper(client,mapper_bucket,index,batch) for index,batch in enumerate(json_batches)]
+        mapper(client,reducer_bucket,index,json_batch)
 
     except Exception as e:
         error = e
-        print(colored("Error in mapper-q1 handler",'red'))
+        print("Error in mapper-q1 handler")
 
-    payload = { 'success': False, 'error': error } if error else { 'success': True, 'message': f'Mapper data for q1 have been successfully uploaded to Minio in bucket {mapper_bucket}' }
+    payload = { 'success': False, 'error': error } if error else { 'success': True, 'message': f'Mapper data for q1 have been successfully uploaded to Minio in bucket {reducer_bucket}' }
 
     return payload
+    # print(os.environ.get("MINIO_HOSTNAME"))
 

@@ -7,6 +7,12 @@ functions:
     lang: python3-debian
     handler: ./data-entry
     image: data-entry:latest
+    env_file: .env
+    environment:
+      MINIO_HOSTNAME: "192.168.68.108:9000"
+      MINIO_ACCESS_KEY: "digitalinfra"
+      MINIO_SECRET_KEY: "$JJyaQxS&dW7Y2eF"
+
 
 
 

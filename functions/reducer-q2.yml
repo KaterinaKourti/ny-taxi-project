@@ -1,0 +1,16 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  reducer-q2:
+    lang: python3-debian
+    handler: ./reducer-q2
+    image: reducer-q2:latest
+    environment:
+      MINIO_HOSTNAME: "192.168.68.108:9000"
+      MINIO_ACCESS_KEY: "digitalinfra"
+      MINIO_SECRET_KEY: "$JJyaQxS&dW7Y2eF"
+
+
+
