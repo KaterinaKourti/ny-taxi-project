@@ -12,20 +12,9 @@ BUCKET_NAMES = {
 }
 
 
-def create_bucket(bucket):
+def connect_to_minio():
     client = Minio(environ.get("MINIO_HOSTNAME"),access_key = environ.get("MINIO_ACCESS_KEY"), secret_key = environ.get("MINIO_SECRET_KEY"),secure=False)
-    if not client.bucket_exists(bucket):
-        client.make_bucket(bucket)
-
-    buckets = client.list_buckets()
-    for b in buckets:
-        print(b.name, b.creation_date)
-
     return client
-
-# def connect_to_client():
-#     client = Minio('127.0.0.1:9000',access_key = 'minioadmin', secret_key = 'minioadmin',secure=False)
-#     return client
 
 
 def preprocess(client,chunk,index,query):
@@ -37,14 +26,14 @@ def preprocess(client,chunk,index,query):
 
 def handle(req):
     error = ''
+    body = loads(req)
+    query = body['query']
+    batch_info = body['batch_info']
     try:
-        body = loads(req)
-        query = body['query']
-        batch_info = body['batch_info']
         batch_name = batch_info.split('/')[1]
         index = batch_name.split('_')[1]
         mapper_bucket = BUCKET_NAMES['mapper'].format(f"q{query}")
-        client = create_bucket(mapper_bucket)
+        client = connect_to_minio()
         print('Batch Name: ',batch_name)
         batch = client.get_object(BUCKET_NAMES['data-entry'],batch_name).read().decode('utf-8')
         # batch_loaded = loads(batch)
@@ -58,10 +47,7 @@ def handle(req):
         error = e
         print("Error in preprocess handler")
 
-    payload = { 'success': False, 'error': error } if error else { 'success': True, 'message': f'Preprocess data for q1 have been successfully uploaded to Minio in bucket {mapper_bucket}' }
+    payload = { 'success': False, 'error': error } if error else { 'success': True, 'message': f'Preprocess data for q{query} have been successfully uploaded to Minio in bucket {mapper_bucket}' }
 
     return payload
 
-
-# if __name__ == "__main__":
-#     main()
