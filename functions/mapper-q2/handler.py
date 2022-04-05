@@ -7,7 +7,6 @@ from os import environ
 
 BUCKET_NAMES = {"mapper-q2": "mapper-data-q2", "reducer-q2": "reducer-data-q2"}
 
-
 def connect_to_minio():
     client = Minio(
         environ.get("MINIO_HOSTNAME"),
@@ -23,7 +22,6 @@ def calculate_distance(row):
     source_lat = float(row["pickup_latitude"])
     source_long = float(row["pickup_longitude"])
     source_point = (source_lat, source_long)
-
     # Get Dropoff (lat,long) coordinates from each row of the batch and turn them into point -> (lat,long) tuple
     dest_lat = float(row["dropoff_latitude"])
     dest_long = float(row["dropoff_longitude"])
@@ -48,7 +46,6 @@ def trip_stats(row):
 
 def shuffle_trip_stats(batch):
     trips = {"effective": [], "ineffective": []}
-
     for trip in batch:
         if trip[0] == "effective":
             trips["effective"].append(trip[1])
